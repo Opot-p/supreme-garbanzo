@@ -4,7 +4,7 @@ class Database {
     private $data;
 
     public function __construct() {
-        $this->dbFile = __DIR__ . '/database.json';
+        $this->dbFile = __DIR__ . '/../db/database.json';
         $this->load();
     }
 
