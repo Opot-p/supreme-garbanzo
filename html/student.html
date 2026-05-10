@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кабинет студента - EduPro</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/html/index.html" class="logo">📚 EduPro</a>
+            <ul class="nav-links">
+                <li><a href="/html/student.html" class="active">Мои курсы</a></li>
+                <li><a href="/html/courses.html">Все курсы</a></li>
+                <li class="auth-only" style="display: none;">
+                    <span class="user-badge user-role"></span>
+                </li>
+                <li class="auth-only user-name" style="display: none;"></li>
+                <li class="auth-only" style="display: none;">
+                    <a href="#" onclick="logout()" class="btn btn-danger btn-sm">Выход</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1 style="color: white; margin-bottom: 2rem;">Мои курсы</h1>
+        
+        <div id="myCoursesList" class="grid grid-2">
+            <!-- Курсы будут загружены здесь -->
+        </div>
+    </main>
+
+    <script src="/js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!currentUser || currentUser.role !== 'student') {
+                window.location.href = '/html/index.html';
+                return;
+            }
+            await loadMyCourses();
+        });
+
+        async function loadMyCourses() {
+            const courses = await getCourses();
+            const container = document.getElementById('myCoursesList');
+            container.innerHTML = '';
+
+            if (courses.length === 0) {
+                container.innerHTML = `
+                    <div class="card" style="grid-column: 1 / -1; text-align: center;">
+                        <h3 class="card-title">У вас пока нет курсов</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">Обратитесь к преподавателю для зачисления на курс</p>
+                        <a href="/html/courses.html" class="btn btn-primary">Посмотреть доступные курсы</a>
+                    </div>
+                `;
+                return;
+            }
+
+            courses.forEach(course => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h4 class="card-title">${escapeHtml(course.title)}</h4>
+                    <p class="card-subtitle">${escapeHtml(course.description || 'Без описания')}</p>
+                    <button class="btn btn-primary" onclick="startCourse(${course.id})">📖 Начать обучение</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function startCourse(courseId) {
+            localStorage.setItem('currentCourseId', courseId);
+            window.location.href = '/html/lesson-view.html';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

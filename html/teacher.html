@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кабинет преподавателя - EduPro</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/html/index.html" class="logo">📚 EduPro</a>
+            <ul class="nav-links">
+                <li><a href="/html/teacher.html" class="active">Мои курсы</a></li>
+                <li><a href="/html/courses.html">Все курсы</a></li>
+                <li class="auth-only" style="display: none;">
+                    <span class="user-badge user-role"></span>
+                </li>
+                <li class="auth-only user-name" style="display: none;"></li>
+                <li class="auth-only" style="display: none;">
+                    <a href="#" onclick="logout()" class="btn btn-danger btn-sm">Выход</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1 style="color: white; margin-bottom: 2rem;">Кабинет преподавателя</h1>
+        
+        <div class="card" style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 class="card-title">📚 Мои курсы</h3>
+                <button class="btn btn-primary" onclick="openModal('createCourseModal')">+ Создать курс</button>
+            </div>
+            <div id="myCoursesList" class="grid grid-2">
+                <!-- Курсы будут загружены здесь -->
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="card-title">👥 Студенты на курсах</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">Выберите курс для просмотра студентов</p>
+            <select id="courseSelect" onchange="loadStudentsForCourse()" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 2px solid var(--border-color); margin-bottom: 1rem;">
+                <option value="">Выберите курс...</option>
+            </select>
+            <div id="studentsList" class="table-container" style="max-height: 300px; overflow-y: auto; display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>ФИО</th>
+                            <th>Email</th>
+                            <th>Дата зачисления</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Модальное окно создания курса -->
+    <div id="createCourseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Создать новый курс</h3>
+                <button class="modal-close" onclick="closeModal('createCourseModal')">&times;</button>
+            </div>
+            <form id="createCourseForm">
+                <div class="form-group">
+                    <label for="courseTitle">Название курса *</label>
+                    <input type="text" id="courseTitle" required placeholder="Введите название курса">
+                </div>
+                <div class="form-group">
+                    <label for="courseDescription">Описание</label>
+                    <textarea id="courseDescription" rows="4" placeholder="Опишите содержание курса"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Создать курс</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления урока -->
+    <div id="createLessonModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Добавить урок</h3>
+                <button class="modal-close" onclick="closeModal('createLessonModal')">&times;</button>
+            </div>
+            <form id="createLessonForm">
+                <input type="hidden" id="lessonCourseId">
+                <div class="form-group">
+                    <label for="lessonTitle">Название урока *</label>
+                    <input type="text" id="lessonTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="lessonType">Тип урока *</label>
+                    <select id="lessonType" required onchange="toggleLessonContent()">
+                        <option value="text">Текстовый урок</option>
+                        <option value="video">Видеоурок</option>
+                        <option value="test">Тест</option>
+                        <option value="practice">Практическое задание</option>
+                    </select>
+                </div>
+                
+                <!-- Контент для текстового урока -->
+                <div id="textContent" class="form-group">
+                    <label for="lessonContentText">Содержание</label>
+                    <textarea id="lessonContentText" rows="6" placeholder="Введите текст урока..."></textarea>
+                </div>
+                
+                <!-- Контент для видео -->
+                <div id="videoContent" class="form-group" style="display: none;">
+                    <label for="lessonVideoUrl">Ссылка на видео (YouTube)</label>
+                    <input type="text" id="lessonVideoUrl" placeholder="https://youtube.com/watch?v=...">
+                </div>
+                
+                <!-- Контент для теста -->
+                <div id="testContent" class="form-group" style="display: none;">
+                    <label>Вопросы теста</label>
+                    <div id="questionsContainer"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addQuestion()" style="margin-top: 0.5rem;">+ Добавить вопрос</button>
+                </div>
+                
+                <!-- Контент для практики -->
+                <div id="practiceContent" class="form-group" style="display: none;">
+                    <label for="practiceTask">Задание *</label>
+                    <textarea id="practiceTask" rows="4" placeholder="Опишите практическое задание..."></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Добавить урок</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        let questionCount = 0;
+        let myCourses = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'admin')) {
+                window.location.href = '/html/index.html';
+                return;
+            }
+            await loadMyCourses();
+        });
+
+        async function loadMyCourses() {
+            const allCourses = await getCourses();
+            
+            // Преподаватель видит только свои курсы, админ - все
+            if (currentUser.role === 'teacher') {
+                myCourses = allCourses.filter(c => c.teacherId === currentUser.id);
+            } else {
+                myCourses = allCourses;
+            }
+
+            const container = document.getElementById('myCoursesList');
+            const select = document.getElementById('courseSelect');
+            
+            container.innerHTML = '';
+            select.innerHTML = '<option value="">Выберите курс...</option>';
+
+            if (myCourses.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">У вас пока нет курсов. Создайте первый курс!</p>';
+                return;
+            }
+
+            myCourses.forEach(course => {
+                // Карточка курса
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h4 class="card-title">${escapeHtml(course.title)}</h4>
+                    <p class="card-subtitle">${escapeHtml(course.description || 'Без описания')}</p>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary btn-sm" onclick="viewCourseLessons(${course.id})">📖 Уроки</button>
+                        <button class="btn btn-primary btn-sm" onclick="openCreateLessonModal(${course.id})">+ Урок</button>
+                        <button class="btn btn-success btn-sm" onclick="viewCourseCRM(${course.id})">📊 CRM</button>
+                    </div>
+                `;
+                container.appendChild(card);
+
+                // Опция в селекте
+                const option = document.createElement('option');
+                option.value = course.id;
+                option.textContent = course.title;
+                select.appendChild(option);
+            });
+        }
+
+        function toggleLessonContent() {
+            const type = document.getElementById('lessonType').value;
+            document.getElementById('textContent').style.display = type === 'text' ? 'block' : 'none';
+            document.getElementById('videoContent').style.display = type === 'video' ? 'block' : 'none';
+            document.getElementById('testContent').style.display = type === 'test' ? 'block' : 'none';
+            document.getElementById('practiceContent').style.display = type === 'practice' ? 'block' : 'none';
+        }
+
+        function openCreateLessonModal(courseId) {
+            document.getElementById('lessonCourseId').value = courseId;
+            questionCount = 0;
+            document.getElementById('questionsContainer').innerHTML = '';
+            openModal('createLessonModal');
+        }
+
+        function addQuestion() {
+            questionCount++;
+            const container = document.getElementById('questionsContainer');
+            const div = document.createElement('div');
+            div.style.cssText = 'background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;';
+            div.innerHTML = `
+                <div class="form-group">
+                    <label>Вопрос ${questionCount} *</label>
+                    <input type="text" class="question-text" required placeholder="Текст вопроса">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    <div class="form-group">
+                        <label>Вариант 1 *</label>
+                        <input type="text" class="option-1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Вариант 2 *</label>
+                        <input type="text" class="option-2" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Вариант 3</label>
+                        <input type="text" class="option-3">
+                    </div>
+                    <div class="form-group">
+                        <label>Вариант 4</label>
+                        <input type="text" class="option-4">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Правильный ответ *</label>
+                    <select class="correct-answer" required>
+                        <option value="0">Вариант 1</option>
+                        <option value="1">Вариант 2</option>
+                        <option value="2">Вариант 3</option>
+                        <option value="3">Вариант 4</option>
+                    </select>
+                </div>
+                <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">Удалить вопрос</button>
+            `;
+            container.appendChild(div);
+        }
+
+        document.getElementById('createCourseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('courseTitle').value;
+            const description = document.getElementById('courseDescription').value;
+
+            const course = await createCourse(title, description);
+            if (course) {
+                closeModal('createCourseModal');
+                document.getElementById('createCourseForm').reset();
+                await loadMyCourses();
+            }
+        });
+
+        document.getElementById('createLessonForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const courseId = document.getElementById('lessonCourseId').value;
+            const title = document.getElementById('lessonTitle').value;
+            const type = document.getElementById('lessonType').value;
+            
+            let content = '';
+            
+            if (type === 'text') {
+                content = document.getElementById('lessonContentText').value;
+            } else if (type === 'video') {
+                content = document.getElementById('lessonVideoUrl').value;
+            } else if (type === 'practice') {
+                content = document.getElementById('practiceTask').value;
+            } else if (type === 'test') {
+                const questions = [];
+                document.querySelectorAll('#questionsContainer > div').forEach(div => {
+                    const text = div.querySelector('.question-text').value;
+                    const options = [
+                        div.querySelector('.option-1').value,
+                        div.querySelector('.option-2').value,
+                        div.querySelector('.option-3').value || '',
+                        div.querySelector('.option-4').value || ''
+                    ].filter(o => o);
+                    const correct = parseInt(div.querySelector('.correct-answer').value);
+                    
+                    questions.push({ text, options, correct });
+                });
+                
+                if (questions.length === 0) {
+                    showAlert('Добавьте хотя бы один вопрос', 'error');
+                    return;
+                }
+                
+                const test = await createTest(parseInt(courseId), questions);
+                if (test) {
+                    content = JSON.stringify({ testId: test.id, questions: questions.length });
+                }
+            }
+
+            const lesson = await createLesson(courseId, title, type, content);
+            if (lesson) {
+                closeModal('createLessonModal');
+                document.getElementById('createLessonForm').reset();
+                toggleLessonContent();
+            }
+        });
+
+        async function loadStudentsForCourse() {
+            const courseId = document.getElementById('courseSelect').value;
+            if (!courseId) {
+                document.getElementById('studentsList').style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/php/api.php?action=get_students&courseId=${courseId}`);
+                const data = await response.json();
+                
+                if (data.success && data.students.length > 0) {
+                    const tbody = document.getElementById('studentsTable');
+                    tbody.innerHTML = '';
+                    
+                    data.students.forEach(student => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${student.id}</td>
+                            <td>${escapeHtml(student.name)}</td>
+                            <td>${escapeHtml(student.email || '-')}</td>
+                            <td>-</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    
+                    document.getElementById('studentsList').style.display = 'block';
+                } else {
+                    showAlert('На этом курсе пока нет студентов', 'warning');
+                    document.getElementById('studentsList').style.display = 'none';
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        function viewCourseLessons(courseId) {
+            localStorage.setItem('currentCourseId', courseId);
+            window.location.href = '/html/lesson-view.html';
+        }
+
+        function viewCourseCRM(courseId) {
+            localStorage.setItem('currentCourseId', courseId);
+            window.location.href = '/html/crm.html';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

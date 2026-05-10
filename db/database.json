@@ -1,0 +1,26 @@
+{
+    "users": [
+        {
+            "id": 1,
+            "login": "admin",
+            "password": "$2y$10$hSE0325ne8T12cGyU\/fOQeVhmxmTB5BO3hn1U5OFgGMLQsJn65e5i",
+            "role": "admin",
+            "name": "Администратор",
+            "email": "admin@example.com"
+        },
+        {
+            "id": 2,
+            "login": "teststudent",
+            "password": "$2y$10$q2vzoPRf1m43uhxLEj5MJ.a2DiO69sp14faNQqT5vaf8ulZNn0eXy",
+            "role": "student",
+            "name": "Тестовый Студент",
+            "email": "test@test.com"
+        }
+    ],
+    "courses": [],
+    "lessons": [],
+    "enrollments": [],
+    "submissions": [],
+    "tests": [],
+    "test_answers": []
+}

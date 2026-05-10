@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduPro - Платформа онлайн обучения</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/html/index.html" class="logo">📚 EduPro</a>
+            <ul class="nav-links">
+                <li><a href="/html/index.html">Главная</a></li>
+                <li><a href="/html/courses.html">Курсы</a></li>
+                <li class="guest-only"><a href="/html/login.html">Вход</a></li>
+                <li class="guest-only"><a href="/html/register.html">Регистрация</a></li>
+                <li class="auth-only" style="display: none;">
+                    <span class="user-badge user-role"></span>
+                </li>
+                <li class="auth-only user-name" style="display: none;"></li>
+                <li class="auth-only" style="display: none;">
+                    <a href="#" onclick="logout()" class="btn btn-danger btn-sm">Выход</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1>Добро пожаловать в EduPro!</h1>
+            <p>Современная платформа для онлайн-обучения с интерактивными уроками, тестами и практическими заданиями</p>
+            <div class="hero-buttons">
+                <a href="/html/register.html" class="btn btn-primary guest-only" style="display: none;">Начать обучение</a>
+                <a href="/html/courses.html" class="btn btn-secondary">Посмотреть курсы</a>
+            </div>
+        </section>
+
+        <div class="container">
+            <div class="grid grid-3">
+                <div class="card">
+                    <h3 class="card-title">🎓 Качественное образование</h3>
+                    <p>Доступ к лучшим курсам от профессионалов своего дела</p>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">📝 Практические задания</h3>
+                    <p>Закрепляйте знания на реальных проектах с проверкой преподавателя</p>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">📊 Отслеживание прогресса</h3>
+                    <p>CRM-система для мониторинга успеваемости и оценок</p>
+                </div>
+            </div>
+
+            <div class="grid grid-3" style="margin-top: 2rem;">
+                <div class="card">
+                    <h3 class="card-title">🎥 Видеоуроки</h3>
+                    <p>Смотрите записи лекций в удобное время</p>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">✅ Тесты и экзамены</h3>
+                    <p>Проверяйте знания с автоматической проверкой</p>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">👨‍🏫 Личный преподаватель</h3>
+                    <p>Получайте обратную связь и поддержку</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
