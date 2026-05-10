@@ -72,6 +72,9 @@ const UI = {
 
 // Form Handlers
 document.addEventListener('DOMContentLoaded', function() {
+    // Проверка авторизации при загрузке страницы
+    checkAuth();
+    
     // Login Form
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
@@ -92,7 +95,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (result.success) {
                 UI.showAlert(result.message, 'success');
                 setTimeout(() => {
-                    window.location.href = 'index.html';
+                    // Редирект в зависимости от роли
+                    if (result.data && result.data.redirect) {
+                        window.location.href = result.data.redirect;
+                    } else {
+                        window.location.href = 'index.html';
+                    }
                 }, 1000);
             } else {
                 UI.showAlert(result.message, 'error');
@@ -121,7 +129,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (result.success) {
                 UI.showAlert(result.message, 'success');
                 setTimeout(() => {
-                    window.location.href = 'login.html';
+                    // Автоматический вход после регистрации - редирект на страницу студента
+                    window.location.href = 'student.html';
                 }, 1000);
             } else {
                 UI.showAlert(result.message, 'error');
@@ -360,6 +369,74 @@ async function loadUserData() {
             userDisplay.textContent = `Привет, ${result.data.user.username} (${result.data.user.role})`;
         }
     }
+}
+
+// Функция проверки авторизации и редиректа по роли
+async function checkAuth() {
+    // Если мы на странице входа или регистрации, не делаем редирект
+    if (window.location.pathname.includes('login.html') || 
+        window.location.pathname.includes('register.html')) {
+        return;
+    }
+    
+    const result = await API.request('check_auth');
+    
+    if (result.success && result.data && result.data.authenticated) {
+        const user = result.data.user;
+        const expectedPage = getExpectedPageByRole(user.role);
+        
+        // Если пользователь пытается зайти не на свою страницу
+        if (!isAllowedPage(expectedPage)) {
+            window.location.href = expectedPage;
+        }
+        
+        // Обновляем отображение пользователя
+        const userDisplay = document.getElementById('userDisplay');
+        if (userDisplay) {
+            userDisplay.textContent = `Привет, ${user.username}`;
+        }
+        
+        // Сохраняем данные о текущем пользователе в localStorage для быстрого доступа
+        localStorage.setItem('currentUser', JSON.stringify(user));
+    } else {
+        // Пользователь не авторизован
+        localStorage.removeItem('currentUser');
+        
+        // Если страница требует авторизации, редиректим на login
+        if (requiresAuth()) {
+            window.location.href = 'login.html';
+        }
+    }
+}
+
+function getExpectedPageByRole(role) {
+    switch (role) {
+        case 'admin':
+            return 'admin.html';
+        case 'teacher':
+            return 'teacher.html';
+        case 'student':
+            return 'student.html';
+        default:
+            return 'index.html';
+    }
+}
+
+function isAllowedPage(expectedPage) {
+    const currentPage = window.location.pathname.split('/').pop();
+    // Разрешаем общие страницы
+    const publicPages = ['index.html', 'courses.html', 'course.html', 'login.html', 'register.html'];
+    if (publicPages.includes(currentPage)) {
+        return true;
+    }
+    // Для страниц профилей проверяем соответствие
+    return currentPage === expectedPage;
+}
+
+function requiresAuth() {
+    const protectedPages = ['admin.html', 'teacher.html', 'student.html'];
+    const currentPage = window.location.pathname.split('/').pop();
+    return protectedPages.includes(currentPage);
 }
 
 async function loadCourses() {

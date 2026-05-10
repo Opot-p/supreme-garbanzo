@@ -2,10 +2,24 @@
 session_start();
 require_once __DIR__ . '/Database.php';
 
+// Функция для редиректа по роли
+function getRedirectByRole($role) {
+    switch ($role) {
+        case 'admin':
+            return 'admin.html';
+        case 'teacher':
+            return 'teacher.html';
+        case 'student':
+            return 'student.html';
+        default:
+            return 'index.html';
+    }
+}
+
 $db = new Database();
 $response = ['success' => false, 'message' => '', 'data' => null];
 
-$action = $_POST['action'] ?? '';
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 try {
     switch ($action) {
@@ -30,9 +44,14 @@ try {
                 'role' => 'student'
             ]);
             
+            // Автоматический вход после регистрации
+            $_SESSION['user_id'] = $userId;
+            $_SESSION['username'] = $username;
+            $_SESSION['role'] = 'student';
+            
             $response['success'] = true;
             $response['message'] = 'Регистрация успешна';
-            $response['data'] = ['user_id' => $userId];
+            $response['data'] = ['user_id' => $userId, 'role' => 'student'];
             break;
             
         case 'login':
@@ -61,7 +80,8 @@ try {
             $response['message'] = 'Вход выполнен';
             $response['data'] = [
                 'user_id' => $user['id'],
-                'role' => $user['role']
+                'role' => $user['role'],
+                'redirect' => getRedirectByRole($user['role'])
             ];
             break;
             
@@ -69,6 +89,23 @@ try {
             session_destroy();
             $response['success'] = true;
             $response['message'] = 'Выход выполнен';
+            break;
+            
+        case 'check_auth':
+            if (isset($_SESSION['user_id'])) {
+                $user = $db->getById('users', $_SESSION['user_id']);
+                if ($user) {
+                    $response['success'] = true;
+                    $response['data'] = [
+                        'authenticated' => true,
+                        'user' => $user,
+                        'redirect' => getRedirectByRole($user['role'])
+                    ];
+                }
+            } else {
+                $response['success'] = true;
+                $response['data'] = ['authenticated' => false];
+            }
             break;
             
         case 'create_teacher':

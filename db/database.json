@@ -15,6 +15,14 @@
             "role": "student",
             "id": 2,
             "created_at": "2026-05-10 10:47:53"
+        },
+        {
+            "username": "teststudent",
+            "email": "test@student.com",
+            "password": "$2y$10$GidgkvtZlY94MuAnM9U1IeOOEMicZx4XKWSWM3gq4h3TsIIpke6K.",
+            "role": "student",
+            "id": 3,
+            "created_at": "2026-05-10 10:56:31"
         }
     ],
     "teachers": [
