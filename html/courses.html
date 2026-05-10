@@ -3,71 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Все курсы - Онлайн Обучение</title>
-    <link rel="stylesheet" href="../css/style.css">
+    <title>Все курсы - EduPro</title>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <header>
-        <div class="container">
-            <a href="index.html" class="logo">OnlineLearn</a>
-            <nav>
-                <ul>
-                    <li><a href="index.html">Главная</a></li>
-                    <li><a href="courses.html">Курсы</a></li>
-                    <li><a href="login.html">Вход</a></li>
-                    <li><a href="register.html">Регистрация</a></li>
-                </ul>
-            </nav>
-        </div>
+        <nav>
+            <a href="/html/index.html" class="logo">📚 EduPro</a>
+            <ul class="nav-links">
+                <li><a href="/html/index.html">Главная</a></li>
+                <li><a href="/html/courses.html" class="active">Курсы</a></li>
+                <li class="guest-only"><a href="/html/login.html">Вход</a></li>
+                <li class="guest-only"><a href="/html/register.html">Регистрация</a></li>
+                <li class="auth-only" style="display: none;">
+                    <span class="user-badge user-role"></span>
+                </li>
+                <li class="auth-only user-name" style="display: none;"></li>
+                <li class="auth-only" style="display: none;">
+                    <a href="#" onclick="logout()" class="btn btn-danger btn-sm">Выход</a>
+                </li>
+            </ul>
+        </nav>
     </header>
 
-    <main>
-        <div class="container">
-            <div class="card">
-                <h2>Все доступные курсы</h2>
-                <div id="allCoursesList">
-                    <p>Загрузка курсов...</p>
+    <main class="container">
+        <h1 style="color: white; margin-bottom: 2rem;">Все курсы</h1>
+        
+        <!-- Форма зачисления для преподавателей/админов -->
+        <div id="enrollSection" class="card" style="margin-bottom: 2rem; display: none;">
+            <h3 class="card-title">➕ Зачислить студента на курс</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="selectStudent">Студент</label>
+                    <select id="selectStudent" style="width: 100%;"></select>
                 </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="selectCourseEnroll">Курс</label>
+                    <select id="selectCourseEnroll" style="width: 100%;"></select>
+                </div>
+                <button class="btn btn-primary" onclick="enrollStudentClick()">Зачислить</button>
             </div>
+        </div>
+
+        <div id="coursesList" class="grid grid-3">
+            <!-- Курсы будут загружены здесь -->
         </div>
     </main>
 
-    <footer>
-        <div class="container">
-            <p>&copy; 2024 OnlineLearn. Все права защищены.</p>
-        </div>
-    </footer>
-
-    <script src="../js/app.js"></script>
+    <script src="/js/app.js"></script>
     <script>
-        async function loadAllCourses() {
-            const result = await API.request('get_courses');
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAllCourses();
             
-            if (result.success && result.data.courses) {
-                const coursesContainer = document.getElementById('allCoursesList');
-                if (coursesContainer) {
-                    coursesContainer.innerHTML = '';
-                    
-                    if (result.data.courses.length === 0) {
-                        coursesContainer.innerHTML = '<p>Курсы пока не созданы</p>';
-                        return;
-                    }
-                    
-                    result.data.courses.forEach(course => {
-                        const courseCard = document.createElement('div');
-                        courseCard.className = 'card course-item';
-                        courseCard.innerHTML = `
-                            <h3>${course.title}</h3>
-                            <p>${course.description}</p>
-                            <a href="course.html?id=${course.id}" class="btn">Подробнее</a>
-                        `;
-                        coursesContainer.appendChild(courseCard);
-                    });
-                }
+            if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'teacher')) {
+                document.getElementById('enrollSection').style.display = 'block';
+                await loadStudentsAndCoursesForEnroll();
+            }
+        });
+
+        async function loadAllCourses() {
+            const courses = await getCourses();
+            const container = document.getElementById('coursesList');
+            container.innerHTML = '';
+
+            if (courses.length === 0) {
+                container.innerHTML = '<p style="color: white; grid-column: 1 / -1; text-align: center;">Курсов пока нет</p>';
+                return;
+            }
+
+            courses.forEach(course => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h4 class="card-title">${escapeHtml(course.title)}</h4>
+                    <p class="card-subtitle">${escapeHtml(course.description || 'Без описания')}</p>
+                    ${currentUser ? `<button class="btn btn-primary btn-sm" onclick="viewCourse(${course.id})">Подробнее</button>` : ''}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function loadStudentsAndCoursesForEnroll() {
+            const users = await getAllUsers('student');
+            const courses = await getCourses();
+
+            const studentSelect = document.getElementById('selectStudent');
+            const courseSelect = document.getElementById('selectCourseEnroll');
+
+            studentSelect.innerHTML = '<option value="">Выберите студента...</option>';
+            users.forEach(u => {
+                const option = document.createElement('option');
+                option.value = u.id;
+                option.textContent = u.name;
+                studentSelect.appendChild(option);
+            });
+
+            courseSelect.innerHTML = '<option value="">Выберите курс...</option>';
+            courses.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c.id;
+                option.textContent = c.title;
+                courseSelect.appendChild(option);
+            });
+        }
+
+        async function enrollStudentClick() {
+            const studentId = document.getElementById('selectStudent').value;
+            const courseId = document.getElementById('selectCourseEnroll').value;
+
+            if (!studentId || !courseId) {
+                showAlert('Выберите студента и курс', 'error');
+                return;
+            }
+
+            const result = await enrollStudent(studentId, courseId);
+            if (result) {
+                document.getElementById('selectStudent').value = '';
+                document.getElementById('selectCourseEnroll').value = '';
             }
         }
-        
-        document.addEventListener('DOMContentLoaded', loadAllCourses);
+
+        function viewCourse(courseId) {
+            localStorage.setItem('currentCourseId', courseId);
+            
+            if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'admin')) {
+                window.location.href = '/html/lesson-view.html';
+            } else if (currentUser && currentUser.role === 'student') {
+                window.location.href = '/html/lesson-view.html';
+            } else {
+                window.location.href = '/html/login.html';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
     </script>
 </body>
 </html>

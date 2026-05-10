@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM - EduPro</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/html/index.html" class="logo">📚 EduPro</a>
+            <ul class="nav-links">
+                <li><a href="/html/teacher.html">Мои курсы</a></li>
+                <li><a href="/html/crm.html" class="active">CRM</a></li>
+                <li class="auth-only" style="display: none;">
+                    <span class="user-badge user-role"></span>
+                </li>
+                <li class="auth-only user-name" style="display: none;"></li>
+                <li class="auth-only" style="display: none;">
+                    <a href="#" onclick="logout()" class="btn btn-danger btn-sm">Выход</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1 style="color: white; margin-bottom: 2rem;">CRM модуль курса</h1>
+        
+        <div class="card" style="margin-bottom: 2rem;">
+            <h3 class="card-title">📊 Успеваемость студентов</h3>
+            <p id="courseName" style="color: var(--text-secondary); margin-bottom: 1rem;"></p>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Студент</th>
+                            <th>Тесты</th>
+                            <th>Практика</th>
+                            <th>Средний балл</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsProgressTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 class="card-title">📝 Работы студентов на проверку</h3>
+            <div id="submissionsList" style="margin-top: 1rem;">
+                <!-- Работы будут загружены здесь -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Модальное окно оценки работы -->
+    <div id="gradeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Оценить работу</h3>
+                <button class="modal-close" onclick="closeModal('gradeModal')">&times;</button>
+            </div>
+            <input type="hidden" id="gradeSubmissionId">
+            <div class="form-group">
+                <label>Работа студента</label>
+                <div id="studentWorkContent" style="background: #f9fafb; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; max-height: 300px; overflow-y: auto;"></div>
+            </div>
+            <div class="form-group">
+                <label for="gradeValue">Оценка (1-5) *</label>
+                <input type="number" id="gradeValue" min="1" max="5" required>
+            </div>
+            <div class="form-group">
+                <label for="gradeFeedback">Комментарий</label>
+                <textarea id="gradeFeedback" rows="3" placeholder="Напишите комментарий для студента..."></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="submitGrade()">Выставить оценку</button>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        let currentCourseId = null;
+        let allLessons = [];
+        let allSubmissions = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'admin')) {
+                window.location.href = '/html/index.html';
+                return;
+            }
+
+            currentCourseId = localStorage.getItem('currentCourseId');
+            if (!currentCourseId) {
+                showAlert('Курс не выбран', 'error');
+                window.location.href = '/html/teacher.html';
+                return;
+            }
+
+            await loadCRM();
+        });
+
+        async function loadCRM() {
+            const courses = await getCourses();
+            const course = courses.find(c => c.id == currentCourseId);
+            
+            if (course) {
+                document.getElementById('courseName').textContent = `Курс: ${course.title}`;
+            }
+
+            // Загрузка уроков курса
+            try {
+                const response = await fetch(`/php/api.php?action=get_lessons&courseId=${currentCourseId}`);
+                const data = await response.json();
+                if (data.success) {
+                    allLessons = data.lessons;
+                }
+            } catch (error) {
+                console.error(error);
+            }
+
+            // Загрузка всех работ студентов по урокам этого курса
+            allSubmissions = [];
+            for (const lesson of allLessons) {
+                try {
+                    const response = await fetch(`/php/api.php?action=get_submissions&lessonId=${lesson.id}`);
+                    const data = await response.json();
+                    if (data.success) {
+                        allSubmissions.push(...data.submissions);
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+
+            await loadStudentsProgress();
+            loadSubmissions();
+        }
+
+        async function loadStudentsProgress() {
+            const studentsResponse = await fetch(`/php/api.php?action=get_students&courseId=${currentCourseId}`);
+            const studentsData = await studentsResponse.json();
+            const students = studentsData.success ? studentsData.students : [];
+
+            const tbody = document.getElementById('studentsProgressTable');
+            tbody.innerHTML = '';
+
+            for (const student of students) {
+                // Получаем результаты тестов студента
+                let testScores = [];
+                let practiceGrades = [];
+
+                for (const lesson of allLessons) {
+                    if (lesson.type === 'test') {
+                        try {
+                            const content = JSON.parse(lesson.content);
+                            const testResponse = await fetch(`/php/api.php?action=get_test_result&testId=${content.testId}`);
+                            const testData = await testResponse.json();
+                            if (testData.success && testData.answer && testData.answer.studentId === student.id) {
+                                testScores.push(testData.answer.grade);
+                            }
+                        } catch (e) {}
+                    }
+                    
+                    if (lesson.type === 'practice') {
+                        const submission = allSubmissions.find(s => s.lessonId === lesson.id && s.studentId === student.id);
+                        if (submission && submission.grade !== null) {
+                            practiceGrades.push(parseInt(submission.grade));
+                        }
+                    }
+                }
+
+                const avgTest = testScores.length > 0 
+                    ? (testScores.reduce((a, b) => a + b, 0) / testScores.length).toFixed(2) 
+                    : '-';
+                
+                const avgPractice = practiceGrades.length > 0 
+                    ? (practiceGrades.reduce((a, b) => a + b, 0) / practiceGrades.length).toFixed(2) 
+                    : '-';
+
+                const allGrades = [...testScores, ...practiceGrades];
+                const avgTotal = allGrades.length > 0 
+                    ? (allGrades.reduce((a, b) => a + b, 0) / allGrades.length).toFixed(2) 
+                    : '-';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${escapeHtml(student.name)}</td>
+                    <td>${avgTest}</td>
+                    <td>${avgPractice}</td>
+                    <td><strong>${avgTotal}</strong></td>
+                `;
+                tbody.appendChild(tr);
+            }
+
+            if (students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">На курсе пока нет студентов</td></tr>';
+            }
+        }
+
+        function loadSubmissions() {
+            const container = document.getElementById('submissionsList');
+            
+            const pendingSubmissions = allSubmissions.filter(s => s.grade === null);
+
+            if (pendingSubmissions.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">Нет работ на проверку</p>';
+                return;
+            }
+
+            container.innerHTML = '';
+            pendingSubmissions.forEach(sub => {
+                const lesson = allLessons.find(l => l.id === sub.lessonId);
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.style.cssText = 'margin-bottom: 1rem;';
+                div.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <strong>${sub.studentName || 'Студент'}</strong>
+                        <span class="lesson-type-badge type-practice">${lesson ? lesson.title : 'Урок'}</span>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0.5rem;">
+                        Файл: ${escapeHtml(sub.fileName)} | Дата: ${new Date(sub.submitted_at).toLocaleDateString()}
+                    </p>
+                    <button class="btn btn-primary btn-sm" onclick="openGradeModal(${sub.id})">Проверить</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function openGradeModal(submissionId) {
+            const submission = allSubmissions.find(s => s.id === submissionId);
+            if (!submission) return;
+
+            document.getElementById('gradeSubmissionId').value = submissionId;
+            document.getElementById('studentWorkContent').textContent = submission.fileContent || 'Файл не содержит текста';
+            document.getElementById('gradeValue').value = '';
+            document.getElementById('gradeFeedback').value = '';
+            
+            openModal('gradeModal');
+        }
+
+        async function submitGrade() {
+            const submissionId = document.getElementById('gradeSubmissionId').value;
+            const grade = document.getElementById('gradeValue').value;
+            const feedback = document.getElementById('gradeFeedback').value;
+
+            if (!grade) {
+                showAlert('Введите оценку', 'error');
+                return;
+            }
+
+            const result = await gradeSubmission(submissionId, grade, feedback);
+            if (result) {
+                closeModal('gradeModal');
+                await loadCRM();
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

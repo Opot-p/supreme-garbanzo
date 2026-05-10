@@ -2,439 +2,275 @@
 session_start();
 require_once __DIR__ . '/Database.php';
 
-// Функция для редиректа по роли
-function getRedirectByRole($role) {
-    switch ($role) {
-        case 'admin':
-            return 'admin.html';
-        case 'teacher':
-            return 'teacher.html';
-        case 'student':
-            return 'student.html';
-        default:
-            return 'index.html';
-    }
-}
+header('Content-Type: application/json');
 
 $db = new Database();
-$response = ['success' => false, 'message' => '', 'data' => null];
-
-$action = $_POST['action'] ?? $_GET['action'] ?? '';
+$action = $_POST['action'] ?? '';
 
 try {
     switch ($action) {
         case 'register':
-            $username = trim($_POST['username'] ?? '');
-            $email = trim($_POST['email'] ?? '');
+            $login = $_POST['login'] ?? '';
             $password = $_POST['password'] ?? '';
-            
-            if (empty($username) || empty($email) || empty($password)) {
-                throw new Exception('Все поля обязательны');
+            $name = $_POST['name'] ?? '';
+            $email = $_POST['email'] ?? '';
+            $role = $_POST['role'] ?? 'student'; // По умолчанию студент
+
+            if (empty($login) || empty($password) || empty($name)) {
+                throw new Exception('Заполните все обязательные поля');
             }
-            
-            $existingUser = $db->getUserByUsername($username);
-            if (!empty($existingUser)) {
-                throw new Exception('Пользователь с таким именем уже существует');
+
+            if ($db->getUserByLogin($login)) {
+                throw new Exception('Пользователь с таким логином уже существует');
             }
-            
-            $userId = $db->insert('users', [
-                'username' => $username,
-                'email' => $email,
-                'password' => password_hash($password, PASSWORD_DEFAULT),
-                'role' => 'student'
-            ]);
-            
-            // Автоматический вход после регистрации
-            $_SESSION['user_id'] = $userId;
-            $_SESSION['username'] = $username;
-            $_SESSION['role'] = 'student';
-            
-            $response['success'] = true;
-            $response['message'] = 'Регистрация успешна';
-            $response['data'] = ['user_id' => $userId, 'role' => 'student'];
+
+            $user = $db->createUser($login, $password, $role, $name, $email);
+            $_SESSION['user'] = $user;
+            echo json_encode(['success' => true, 'user' => $user, 'redirect' => getRedirectPage($role)]);
             break;
-            
+
         case 'login':
-            $username = trim($_POST['username'] ?? '');
+            $login = $_POST['login'] ?? '';
             $password = $_POST['password'] ?? '';
-            
-            if (empty($username) || empty($password)) {
+
+            if (empty($login) || empty($password)) {
                 throw new Exception('Введите логин и пароль');
             }
-            
-            $users = $db->getUserByUsername($username);
-            if (empty($users)) {
-                throw new Exception('Пользователь не найден');
+
+            $user = $db->getUserByLogin($login);
+            if (!$user || !password_verify($password, $user['password'])) {
+                throw new Exception('Неверный логин или пароль');
             }
-            
-            $user = $users[0];
-            if (!password_verify($password, $user['password'])) {
-                throw new Exception('Неверный пароль');
-            }
-            
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['role'] = $user['role'];
-            
-            $response['success'] = true;
-            $response['message'] = 'Вход выполнен';
-            $response['data'] = [
-                'user_id' => $user['id'],
-                'role' => $user['role'],
-                'redirect' => getRedirectByRole($user['role'])
-            ];
+
+            $_SESSION['user'] = $user;
+            echo json_encode(['success' => true, 'user' => $user, 'redirect' => getRedirectPage($user['role'])]);
             break;
-            
+
         case 'logout':
             session_destroy();
-            $response['success'] = true;
-            $response['message'] = 'Выход выполнен';
+            echo json_encode(['success' => true]);
             break;
-            
+
         case 'check_auth':
-            if (isset($_SESSION['user_id'])) {
-                $user = $db->getById('users', $_SESSION['user_id']);
-                if ($user) {
-                    $response['success'] = true;
-                    $response['data'] = [
-                        'authenticated' => true,
-                        'user' => $user,
-                        'redirect' => getRedirectByRole($user['role'])
-                    ];
-                }
+            if (isset($_SESSION['user'])) {
+                echo json_encode(['authenticated' => true, 'user' => $_SESSION['user']]);
             } else {
-                $response['success'] = true;
-                $response['data'] = ['authenticated' => false];
+                echo json_encode(['authenticated' => false]);
             }
             break;
-            
-        case 'create_teacher':
-            if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-                throw new Exception('Доступ запрещен');
-            }
-            
-            $userId = intval($_POST['user_id'] ?? 0);
-            $fullName = trim($_POST['full_name'] ?? '');
-            $specialization = trim($_POST['specialization'] ?? '');
-            
-            if (empty($fullName)) {
-                throw new Exception('Укажите ФИО преподавателя');
-            }
-            
-            $db->insert('teachers', [
-                'user_id' => $userId,
-                'full_name' => $fullName,
-                'specialization' => $specialization
-            ]);
-            
-            $db->update('users', $userId, ['role' => 'teacher']);
-            
-            $response['success'] = true;
-            $response['message'] = 'Преподаватель создан';
-            break;
-            
+
         case 'create_course':
-            if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
-                throw new Exception('Доступ запрещен');
-            }
-            
-            $title = trim($_POST['title'] ?? '');
-            $description = trim($_POST['description'] ?? '');
+            checkAuth(['admin', 'teacher']);
+            $title = $_POST['title'] ?? '';
+            $description = $_POST['description'] ?? '';
             
             if (empty($title)) {
-                throw new Exception('Укажите название курса');
+                throw new Exception('Введите название курса');
             }
-            
-            $teachers = $db->findBy('teachers', 'user_id', $_SESSION['user_id']);
-            if (empty($teachers)) {
-                throw new Exception('Преподаватель не найден');
-            }
-            
-            $teacherId = $teachers[0]['id'];
-            
-            $courseId = $db->insert('courses', [
-                'teacher_id' => $teacherId,
-                'title' => $title,
-                'description' => $description
-            ]);
-            
-            $response['success'] = true;
-            $response['message'] = 'Курс создан';
-            $response['data'] = ['course_id' => $courseId];
+
+            $course = $db->createCourse($title, $description, $_SESSION['user']['id']);
+            echo json_encode(['success' => true, 'course' => $course]);
             break;
-            
-        case 'create_lesson':
-            if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
-                throw new Exception('Доступ запрещен');
-            }
-            
-            $courseId = intval($_POST['course_id'] ?? 0);
-            $title = trim($_POST['title'] ?? '');
-            $content = trim($_POST['content'] ?? '');
-            $type = $_POST['type'] ?? 'text';
-            $attachment = trim($_POST['attachment'] ?? '');
-            
-            if (empty($title) || empty($courseId)) {
-                throw new Exception('Укажите название урока и курс');
-            }
-            
-            $lessons = $db->getLessonsByCourse($courseId);
-            $order = count($lessons) + 1;
-            
-            $lessonId = $db->insert('lessons', [
-                'course_id' => $courseId,
-                'title' => $title,
-                'content' => $content,
-                'type' => $type,
-                'attachment' => $attachment,
-                'order' => $order
-            ]);
-            
-            $response['success'] = true;
-            $response['message'] = 'Урок создан';
-            $response['data'] = ['lesson_id' => $lessonId];
-            break;
-            
-        case 'enroll_student':
-            if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
-                throw new Exception('Доступ запрещен');
-            }
-            
-            $courseId = intval($_POST['course_id'] ?? 0);
-            $studentId = intval($_POST['student_id'] ?? 0);
-            
-            if (empty($courseId) || empty($studentId)) {
-                throw new Exception('Укажите курс и студента');
-            }
-            
-            $db->insert('enrollments', [
-                'course_id' => $courseId,
-                'student_id' => $studentId,
-                'progress' => 0
-            ]);
-            
-            $response['success'] = true;
-            $response['message'] = 'Студент зачислен на курс';
-            break;
-            
-        case 'create_assignment':
-            if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
-                throw new Exception('Доступ запрещен');
-            }
-            
-            $lessonId = intval($_POST['lesson_id'] ?? 0);
-            $type = $_POST['type'] ?? 'practice';
-            $title = trim($_POST['title'] ?? '');
-            $description = trim($_POST['description'] ?? '');
-            $dueDate = $_POST['due_date'] ?? null;
-            
-            if (empty($lessonId) || empty($title)) {
-                throw new Exception('Укажите урок и название задания');
-            }
-            
-            $assignmentId = $db->insert('assignments', [
-                'lesson_id' => $lessonId,
-                'type' => $type,
-                'title' => $title,
-                'description' => $description,
-                'due_date' => $dueDate
-            ]);
-            
-            $response['success'] = true;
-            $response['message'] = 'Задание создано';
-            $response['data'] = ['assignment_id' => $assignmentId];
-            break;
-            
-        case 'submit_assignment':
-            if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student') {
-                throw new Exception('Доступ запрещен');
-            }
-            
-            $assignmentId = intval($_POST['assignment_id'] ?? 0);
-            $content = trim($_POST['content'] ?? '');
-            
-            if (empty($assignmentId) || empty($content)) {
-                throw new Exception('Укажите задание и решение');
-            }
-            
-            $submissionId = $db->insert('submissions', [
-                'assignment_id' => $assignmentId,
-                'student_id' => $_SESSION['user_id'],
-                'content' => $content,
-                'grade' => null,
-                'feedback' => null
-            ]);
-            
-            $response['success'] = true;
-            $response['message'] = 'Задание отправлено';
-            $response['data'] = ['submission_id' => $submissionId];
-            break;
-            
-        case 'grade_submission':
-            if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
-                throw new Exception('Доступ запрещен');
-            }
-            
-            $submissionId = intval($_POST['submission_id'] ?? 0);
-            $grade = intval($_POST['grade'] ?? 0);
-            $feedback = trim($_POST['feedback'] ?? '');
-            
-            $db->update('submissions', $submissionId, [
-                'grade' => $grade,
-                'feedback' => $feedback
-            ]);
-            
-            $response['success'] = true;
-            $response['message'] = 'Оценка выставлена';
-            break;
-            
-        case 'create_test':
-            if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
-                throw new Exception('Доступ запрещен');
-            }
-            
-            $lessonId = intval($_POST['lesson_id'] ?? 0);
-            $title = trim($_POST['title'] ?? '');
-            $questions = json_decode($_POST['questions'] ?? '[]', true);
-            
-            if (empty($lessonId) || empty($title)) {
-                throw new Exception('Укажите урок и название теста');
-            }
-            
-            $testId = $db->insert('tests', [
-                'lesson_id' => $lessonId,
-                'title' => $title,
-                'questions' => $questions
-            ]);
-            
-            $response['success'] = true;
-            $response['message'] = 'Тест создан';
-            $response['data'] = ['test_id' => $testId];
-            break;
-            
-        case 'submit_test':
-            if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student') {
-                throw new Exception('Доступ запрещен');
-            }
-            
-            $testId = intval($_POST['test_id'] ?? 0);
-            $answers = json_decode($_POST['answers'] ?? '[]', true);
-            
-            $test = $db->getById('tests', $testId);
-            if (!$test) {
-                throw new Exception('Тест не найден');
-            }
-            
-            $score = 0;
-            $totalQuestions = count($test['questions']);
-            $correctAnswers = 0;
-            
-            foreach ($test['questions'] as $index => $question) {
-                if (isset($answers[$index]) && $answers[$index] == $question['correct']) {
-                    $correctAnswers++;
-                }
-            }
-            
-            $score = $totalQuestions > 0 ? round(($correctAnswers / $totalQuestions) * 100) : 0;
-            
-            $resultId = $db->insert('test_results', [
-                'test_id' => $testId,
-                'student_id' => $_SESSION['user_id'],
-                'answers' => $answers,
-                'score' => $score
-            ]);
-            
-            $response['success'] = true;
-            $response['message'] = 'Тест пройден';
-            $response['data'] = ['score' => $score, 'result_id' => $resultId];
-            break;
-            
-        case 'get_user_data':
-            if (!isset($_SESSION['user_id'])) {
-                throw new Exception('Пользователь не авторизован');
-            }
-            
-            $user = $db->getById('users', $_SESSION['user_id']);
-            $teacherData = null;
-            
-            if ($user['role'] === 'teacher') {
-                $teachers = $db->findBy('teachers', 'user_id', $_SESSION['user_id']);
-                if (!empty($teachers)) {
-                    $teacherData = $teachers[0];
-                }
-            }
-            
-            $response['success'] = true;
-            $response['data'] = [
-                'user' => $user,
-                'teacher' => $teacherData
-            ];
-            break;
-            
+
         case 'get_courses':
-            $courses = $db->getAll('courses');
-            $response['success'] = true;
-            $response['data'] = ['courses' => $courses];
-            break;
-            
-        case 'get_course_details':
-            $courseId = intval($_GET['course_id'] ?? 0);
-            $course = $db->getById('courses', $courseId);
-            if (!$course) {
-                throw new Exception('Курс не найден');
+            checkAuth();
+            $role = $_SESSION['user']['role'];
+            if ($role === 'student') {
+                $courses = $db->getCoursesByStudent($_SESSION['user']['id']);
+            } elseif ($role === 'teacher' || $role === 'admin') {
+                $courses = $db->getAllCourses();
+            } else {
+                $courses = [];
             }
-            
-            $lessons = $db->getLessonsByCourse($courseId);
-            $students = $db->getStudentsByCourse($courseId);
-            
-            $response['success'] = true;
-            $response['data'] = [
-                'course' => $course,
-                'lessons' => $lessons,
-                'students' => $students
-            ];
+            echo json_encode(['success' => true, 'courses' => $courses]);
             break;
-            
-        case 'get_crm_data':
-            $courseId = intval($_GET['course_id'] ?? 0);
+
+        case 'create_lesson':
+            checkAuth(['admin', 'teacher']);
+            $courseId = $_POST['courseId'] ?? '';
+            $title = $_POST['title'] ?? '';
+            $type = $_POST['type'] ?? 'text';
+            $content = $_POST['content'] ?? '';
+
+            if (empty($courseId) || empty($title)) {
+                throw new Exception('Заполните обязательные поля');
+            }
+
+            $lesson = $db->createLesson($courseId, $title, $type, $content);
+            echo json_encode(['success' => true, 'lesson' => $lesson]);
+            break;
+
+        case 'get_lessons':
+            checkAuth();
+            $courseId = $_GET['courseId'] ?? '';
+            $lessons = $db->getLessonsByCourse($courseId);
+            echo json_encode(['success' => true, 'lessons' => $lessons]);
+            break;
+
+        case 'enroll_student':
+            checkAuth(['admin', 'teacher']);
+            $studentId = $_POST['studentId'] ?? '';
+            $courseId = $_POST['courseId'] ?? '';
+
+            if (empty($studentId) || empty($courseId)) {
+                throw new Exception('Выберите студента и курс');
+            }
+
+            $result = $db->enrollStudent($studentId, $courseId);
+            if (!$result) {
+                throw new Exception('Студент уже зачислен на этот курс');
+            }
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'get_students':
+            checkAuth(['admin', 'teacher']);
+            $courseId = $_GET['courseId'] ?? '';
             $students = $db->getStudentsByCourse($courseId);
+            echo json_encode(['success' => true, 'students' => $students]);
+            break;
+
+        case 'submit_assignment':
+            checkAuth(['student']);
+            $lessonId = $_POST['lessonId'] ?? '';
+            $fileContent = $_POST['fileContent'] ?? '';
+            $fileName = $_POST['fileName'] ?? 'файл.txt';
+
+            if (empty($lessonId)) {
+                throw new Exception('Ошибка урока');
+            }
+
+            $submission = $db->submitAssignment($lessonId, $_SESSION['user']['id'], $fileContent, $fileName);
+            echo json_encode(['success' => true, 'submission' => $submission]);
+            break;
+
+        case 'get_submissions':
+            checkAuth(['admin', 'teacher']);
+            $lessonId = $_GET['lessonId'] ?? '';
+            $submissions = $db->getSubmissionsByLesson($lessonId);
             
-            $crmData = [];
-            foreach ($students as $student) {
-                $studentData = [
-                    'id' => $student['id'],
-                    'username' => $student['username'],
-                    'email' => $student['email'],
-                    'grades' => [],
-                    'test_scores' => []
-                ];
-                
-                $submissions = $db->findBy('submissions', 'student_id', $student['id']);
-                foreach ($submissions as $submission) {
-                    if ($submission['grade'] !== null) {
-                        $studentData['grades'][] = $submission['grade'];
+            // Добавляем информацию о студентах
+            $allUsers = $db->getAllUsers();
+            foreach ($submissions as &$sub) {
+                foreach ($allUsers as $u) {
+                    if ($u['id'] == $sub['studentId']) {
+                        $sub['studentName'] = $u['name'];
+                        break;
                     }
                 }
-                
-                $testResults = $db->findBy('test_results', 'student_id', $student['id']);
-                foreach ($testResults as $result) {
-                    $studentData['test_scores'][] = $result['score'];
-                }
-                
-                $crmData[] = $studentData;
             }
             
-            $response['success'] = true;
-            $response['data'] = ['crm' => $crmData];
+            echo json_encode(['success' => true, 'submissions' => $submissions]);
             break;
-            
+
+        case 'grade_submission':
+            checkAuth(['admin', 'teacher']);
+            $submissionId = $_POST['submissionId'] ?? '';
+            $grade = $_POST['grade'] ?? '';
+            $feedback = $_POST['feedback'] ?? '';
+
+            if (empty($submissionId) || $grade === '') {
+                throw new Exception('Заполните оценку');
+            }
+
+            $db->gradeSubmission($submissionId, $grade, $feedback);
+            echo json_encode(['success' => true]);
+            break;
+
+        case 'create_test':
+            checkAuth(['admin', 'teacher']);
+            $lessonId = $_POST['lessonId'] ?? '';
+            $questions = json_decode($_POST['questions'] ?? '[]', true);
+
+            if (empty($lessonId) || empty($questions)) {
+                throw new Exception('Заполните вопросы теста');
+            }
+
+            $test = $db->createTest($lessonId, $questions);
+            echo json_encode(['success' => true, 'test' => $test]);
+            break;
+
+        case 'get_test':
+            checkAuth();
+            $lessonId = $_GET['lessonId'] ?? '';
+            $test = $db->getTestByLesson($lessonId);
+            echo json_encode(['success' => true, 'test' => $test]);
+            break;
+
+        case 'submit_test':
+            checkAuth(['student']);
+            $testId = $_POST['testId'] ?? '';
+            $answers = json_decode($_POST['answers'] ?? '{}', true);
+
+            if (empty($testId)) {
+                throw new Exception('Ошибка теста');
+            }
+
+            $result = $db->submitTestAnswer($testId, $_SESSION['user']['id'], $answers);
+            echo json_encode(['success' => true, 'result' => $result]);
+            break;
+
+        case 'get_test_result':
+            checkAuth();
+            $testId = $_GET['testId'] ?? '';
+            $answer = $db->getTestAnswersByStudent($testId, $_SESSION['user']['id']);
+            echo json_encode(['success' => true, 'answer' => $answer]);
+            break;
+
+        case 'get_all_users':
+            checkAuth(['admin', 'teacher']);
+            $role = $_GET['role'] ?? '';
+            if ($role) {
+                $users = $db->getUsersByRole($role);
+            } else {
+                $users = $db->getAllUsers();
+            }
+            echo json_encode(['success' => true, 'users' => array_values($users)]);
+            break;
+
+        case 'create_teacher':
+            checkAuth(['admin']);
+            $login = $_POST['login'] ?? '';
+            $password = $_POST['password'] ?? '';
+            $name = $_POST['name'] ?? '';
+            $email = $_POST['email'] ?? '';
+
+            if (empty($login) || empty($password) || empty($name)) {
+                throw new Exception('Заполните все поля');
+            }
+
+            if ($db->getUserByLogin($login)) {
+                throw new Exception('Пользователь с таким логином уже существует');
+            }
+
+            $user = $db->createUser($login, $password, 'teacher', $name, $email);
+            echo json_encode(['success' => true, 'user' => $user]);
+            break;
+
         default:
             throw new Exception('Неизвестное действие');
     }
 } catch (Exception $e) {
-    $response['message'] = $e->getMessage();
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
 
-header('Content-Type: application/json');
-echo json_encode($response, JSON_UNESCAPED_UNICODE);
+function checkAuth($allowedRoles = null) {
+    if (!isset($_SESSION['user'])) {
+        throw new Exception('Требуется авторизация');
+    }
+    
+    if ($allowedRoles && !in_array($_SESSION['user']['role'], $allowedRoles)) {
+        throw new Exception('Недостаточно прав');
+    }
+}
+
+function getRedirectPage($role) {
+    switch ($role) {
+        case 'admin': return '/html/admin.html';
+        case 'teacher': return '/html/teacher.html';
+        case 'student': return '/html/student.html';
+        default: return '/html/index.html';
+    }
+}
 ?>

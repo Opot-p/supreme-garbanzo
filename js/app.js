@@ -1,566 +1,496 @@
-// API Helper Functions
-const API = {
-    async request(action, data = {}, method = 'POST') {
-        const formData = new FormData();
-        formData.append('action', action);
-        
-        for (const key in data) {
-            if (typeof data[key] === 'object') {
-                formData.append(key, JSON.stringify(data[key]));
-            } else {
-                formData.append(key, data[key]);
-            }
-        }
+// Глобальные переменные
+let currentUser = null;
 
-        try {
-            const response = await fetch('../php/api.php', {
-                method: method,
-                body: formData
-            });
-            const result = await response.json();
-            return result;
-        } catch (error) {
-            return { success: false, message: 'Ошибка соединения с сервером' };
-        }
-    },
-
-    async get(action, params = {}) {
-        const queryString = new URLSearchParams(params).toString();
-        const url = `../php/api.php?action=${action}${queryString ? '&' + queryString : ''}`;
-        
-        try {
-            const response = await fetch(url);
-            const result = await response.json();
-            return result;
-        } catch (error) {
-            return { success: false, message: 'Ошибка соединения с сервером' };
-        }
-    }
-};
-
-// UI Helper Functions
-const UI = {
-    showAlert(message, type = 'error') {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert alert-${type}`;
-        alertDiv.textContent = message;
-        
-        const container = document.querySelector('.container');
-        const main = document.querySelector('main');
-        if (main && main.firstChild) {
-            main.insertBefore(alertDiv, main.firstChild);
-        } else if (container) {
-            container.insertBefore(alertDiv, container.firstChild);
-        }
-        
-        setTimeout(() => alertDiv.remove(), 5000);
-    },
-
-    showLoading(element) {
-        element.disabled = true;
-        element.originalText = element.textContent;
-        element.textContent = 'Загрузка...';
-    },
-
-    hideLoading(element) {
-        element.disabled = false;
-        if (element.originalText) {
-            element.textContent = element.originalText;
-        }
-    }
-};
-
-// Form Handlers
-document.addEventListener('DOMContentLoaded', function() {
-    // Проверка авторизации при загрузке страницы
-    checkAuth();
-    
-    // Login Form
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = this.querySelector('button[type="submit"]');
-            UI.showLoading(submitBtn);
-            
-            const formData = new FormData(this);
-            const result = await API.request('login', {
-                username: formData.get('username'),
-                password: formData.get('password')
-            });
-            
-            UI.hideLoading(submitBtn);
-            
-            if (result.success) {
-                UI.showAlert(result.message, 'success');
-                setTimeout(() => {
-                    // Редирект в зависимости от роли
-                    if (result.data && result.data.redirect) {
-                        window.location.href = result.data.redirect;
-                    } else {
-                        window.location.href = 'index.html';
-                    }
-                }, 1000);
-            } else {
-                UI.showAlert(result.message, 'error');
-            }
-        });
-    }
-
-    // Register Form
-    const registerForm = document.getElementById('registerForm');
-    if (registerForm) {
-        registerForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = this.querySelector('button[type="submit"]');
-            UI.showLoading(submitBtn);
-            
-            const formData = new FormData(this);
-            const result = await API.request('register', {
-                username: formData.get('username'),
-                email: formData.get('email'),
-                password: formData.get('password')
-            });
-            
-            UI.hideLoading(submitBtn);
-            
-            if (result.success) {
-                UI.showAlert(result.message, 'success');
-                setTimeout(() => {
-                    // Автоматический вход после регистрации - редирект на страницу студента
-                    window.location.href = 'student.html';
-                }, 1000);
-            } else {
-                UI.showAlert(result.message, 'error');
-            }
-        });
-    }
-
-    // Create Teacher Form
-    const createTeacherForm = document.getElementById('createTeacherForm');
-    if (createTeacherForm) {
-        createTeacherForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = this.querySelector('button[type="submit"]');
-            UI.showLoading(submitBtn);
-            
-            const formData = new FormData(this);
-            const result = await API.request('create_teacher', {
-                user_id: formData.get('user_id'),
-                full_name: formData.get('full_name'),
-                specialization: formData.get('specialization')
-            });
-            
-            UI.hideLoading(submitBtn);
-            
-            if (result.success) {
-                UI.showAlert(result.message, 'success');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            } else {
-                UI.showAlert(result.message, 'error');
-            }
-        });
-    }
-
-    // Create Course Form
-    const createCourseForm = document.getElementById('createCourseForm');
-    if (createCourseForm) {
-        createCourseForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = this.querySelector('button[type="submit"]');
-            UI.showLoading(submitBtn);
-            
-            const formData = new FormData(this);
-            const result = await API.request('create_course', {
-                title: formData.get('title'),
-                description: formData.get('description')
-            });
-            
-            UI.hideLoading(submitBtn);
-            
-            if (result.success) {
-                UI.showAlert(result.message, 'success');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            } else {
-                UI.showAlert(result.message, 'error');
-            }
-        });
-    }
-
-    // Create Lesson Form
-    const createLessonForm = document.getElementById('createLessonForm');
-    if (createLessonForm) {
-        createLessonForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = this.querySelector('button[type="submit"]');
-            UI.showLoading(submitBtn);
-            
-            const formData = new FormData(this);
-            const result = await API.request('create_lesson', {
-                course_id: formData.get('course_id'),
-                title: formData.get('title'),
-                content: formData.get('content'),
-                type: formData.get('type'),
-                attachment: formData.get('attachment')
-            });
-            
-            UI.hideLoading(submitBtn);
-            
-            if (result.success) {
-                UI.showAlert(result.message, 'success');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            } else {
-                UI.showAlert(result.message, 'error');
-            }
-        });
-    }
-
-    // Enroll Student Form
-    const enrollStudentForm = document.getElementById('enrollStudentForm');
-    if (enrollStudentForm) {
-        enrollStudentForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = this.querySelector('button[type="submit"]');
-            UI.showLoading(submitBtn);
-            
-            const formData = new FormData(this);
-            const result = await API.request('enroll_student', {
-                course_id: formData.get('course_id'),
-                student_id: formData.get('student_id')
-            });
-            
-            UI.hideLoading(submitBtn);
-            
-            if (result.success) {
-                UI.showAlert(result.message, 'success');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            } else {
-                UI.showAlert(result.message, 'error');
-            }
-        });
-    }
-
-    // Create Assignment Form
-    const createAssignmentForm = document.getElementById('createAssignmentForm');
-    if (createAssignmentForm) {
-        createAssignmentForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = this.querySelector('button[type="submit"]');
-            UI.showLoading(submitBtn);
-            
-            const formData = new FormData(this);
-            const result = await API.request('create_assignment', {
-                lesson_id: formData.get('lesson_id'),
-                type: formData.get('type'),
-                title: formData.get('title'),
-                description: formData.get('description'),
-                due_date: formData.get('due_date')
-            });
-            
-            UI.hideLoading(submitBtn);
-            
-            if (result.success) {
-                UI.showAlert(result.message, 'success');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            } else {
-                UI.showAlert(result.message, 'error');
-            }
-        });
-    }
-
-    // Submit Assignment Form
-    const submitAssignmentForm = document.getElementById('submitAssignmentForm');
-    if (submitAssignmentForm) {
-        submitAssignmentForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = this.querySelector('button[type="submit"]');
-            UI.showLoading(submitBtn);
-            
-            const formData = new FormData(this);
-            const result = await API.request('submit_assignment', {
-                assignment_id: formData.get('assignment_id'),
-                content: formData.get('content')
-            });
-            
-            UI.hideLoading(submitBtn);
-            
-            if (result.success) {
-                UI.showAlert(result.message, 'success');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            } else {
-                UI.showAlert(result.message, 'error');
-            }
-        });
-    }
-
-    // Grade Submission Form
-    const gradeSubmissionForm = document.getElementById('gradeSubmissionForm');
-    if (gradeSubmissionForm) {
-        gradeSubmissionForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitBtn = this.querySelector('button[type="submit"]');
-            UI.showLoading(submitBtn);
-            
-            const formData = new FormData(this);
-            const result = await API.request('grade_submission', {
-                submission_id: formData.get('submission_id'),
-                grade: formData.get('grade'),
-                feedback: formData.get('feedback')
-            });
-            
-            UI.hideLoading(submitBtn);
-            
-            if (result.success) {
-                UI.showAlert(result.message, 'success');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
-            } else {
-                UI.showAlert(result.message, 'error');
-            }
-        });
-    }
-
-    // Logout Button
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async function(e) {
-            e.preventDefault();
-            
-            const result = await API.request('logout');
-            
-            if (result.success) {
-                window.location.href = 'login.html';
-            }
-        });
-    }
-
-    // Load User Data
-    loadUserData();
+// Проверка авторизации при загрузке страницы
+document.addEventListener('DOMContentLoaded', async () => {
+    await checkAuth();
 });
 
-async function loadUserData() {
-    const result = await API.request('get_user_data');
-    
-    if (result.success && result.data) {
-        const userDisplay = document.getElementById('userDisplay');
-        if (userDisplay) {
-            userDisplay.textContent = `Привет, ${result.data.user.username} (${result.data.user.role})`;
-        }
-    }
-}
-
-// Функция проверки авторизации и редиректа по роли
 async function checkAuth() {
-    // Если мы на странице входа или регистрации, не делаем редирект
-    if (window.location.pathname.includes('login.html') || 
-        window.location.pathname.includes('register.html')) {
-        return;
-    }
-    
-    const result = await API.request('check_auth');
-    
-    if (result.success && result.data && result.data.authenticated) {
-        const user = result.data.user;
-        const expectedPage = getExpectedPageByRole(user.role);
+    try {
+        const response = await fetch('/php/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'action=check_auth'
+        });
         
-        // Если пользователь пытается зайти не на свою страницу
-        if (!isAllowedPage(expectedPage)) {
-            window.location.href = expectedPage;
-        }
+        const data = await response.json();
         
-        // Обновляем отображение пользователя
-        const userDisplay = document.getElementById('userDisplay');
-        if (userDisplay) {
-            userDisplay.textContent = `Привет, ${user.username}`;
-        }
-        
-        // Сохраняем данные о текущем пользователе в localStorage для быстрого доступа
-        localStorage.setItem('currentUser', JSON.stringify(user));
-    } else {
-        // Пользователь не авторизован
-        localStorage.removeItem('currentUser');
-        
-        // Если страница требует авторизации, редиректим на login
-        if (requiresAuth()) {
-            window.location.href = 'login.html';
-        }
-    }
-}
-
-function getExpectedPageByRole(role) {
-    switch (role) {
-        case 'admin':
-            return 'admin.html';
-        case 'teacher':
-            return 'teacher.html';
-        case 'student':
-            return 'student.html';
-        default:
-            return 'index.html';
-    }
-}
-
-function isAllowedPage(expectedPage) {
-    const currentPage = window.location.pathname.split('/').pop();
-    // Разрешаем общие страницы
-    const publicPages = ['index.html', 'courses.html', 'course.html', 'login.html', 'register.html'];
-    if (publicPages.includes(currentPage)) {
-        return true;
-    }
-    // Для страниц профилей проверяем соответствие
-    return currentPage === expectedPage;
-}
-
-function requiresAuth() {
-    const protectedPages = ['admin.html', 'teacher.html', 'student.html'];
-    const currentPage = window.location.pathname.split('/').pop();
-    return protectedPages.includes(currentPage);
-}
-
-async function loadCourses() {
-    const result = await API.request('get_courses');
-    
-    if (result.success && result.data.courses) {
-        const coursesContainer = document.getElementById('coursesList');
-        if (coursesContainer) {
-            coursesContainer.innerHTML = '';
+        if (data.authenticated) {
+            currentUser = data.user;
+            updateUserInterface();
+        } else {
+            // Если не авторизован и находится на защищенной странице
+            const protectedPages = ['admin.html', 'teacher.html', 'student.html', 'profile.html'];
+            const currentPage = window.location.pathname.split('/').pop();
             
-            if (result.data.courses.length === 0) {
-                coursesContainer.innerHTML = '<p>Курсы пока не созданы</p>';
-                return;
+            if (protectedPages.includes(currentPage)) {
+                window.location.href = '/html/login.html';
             }
-            
-            result.data.courses.forEach(course => {
-                const courseCard = document.createElement('div');
-                courseCard.className = 'card course-item';
-                courseCard.innerHTML = `
-                    <h3>${course.title}</h3>
-                    <p>${course.description}</p>
-                    <a href="course.html?id=${course.id}" class="btn">Подробнее</a>
-                `;
-                coursesContainer.appendChild(courseCard);
-            });
         }
+    } catch (error) {
+        console.error('Ошибка проверки авторизации:', error);
     }
 }
 
-async function loadCourseDetails(courseId) {
-    const result = await API.get('get_course_details', { course_id: courseId });
+function updateUserInterface() {
+    if (!currentUser) return;
     
-    if (result.success && result.data) {
-        const courseTitle = document.getElementById('courseTitle');
-        const courseDescription = document.getElementById('courseDescription');
-        const lessonsList = document.getElementById('lessonsList');
-        
-        if (courseTitle) courseTitle.textContent = result.data.course.title;
-        if (courseDescription) courseDescription.textContent = result.data.course.description;
-        
-        if (lessonsList && result.data.lessons) {
-            lessonsList.innerHTML = '';
-            
-            if (result.data.lessons.length === 0) {
-                lessonsList.innerHTML = '<p>Уроки пока не созданы</p>';
-                return;
-            }
-            
-            result.data.lessons.forEach(lesson => {
-                const lessonItem = document.createElement('div');
-                lessonItem.className = 'lesson-item';
-                lessonItem.innerHTML = `
-                    <h4>${lesson.title}</h4>
-                    <p>${lesson.content}</p>
-                    <p><strong>Тип:</strong> ${lesson.type}</p>
-                    ${lesson.attachment ? `<p><strong>Файл:</strong> ${lesson.attachment}</p>` : ''}
-                `;
-                lessonsList.appendChild(lessonItem);
-            });
-        }
-    }
-}
-
-async function loadCRMData(courseId) {
-    const result = await API.get('get_crm_data', { course_id: courseId });
+    // Обновляем информацию о пользователе в шапке
+    const userElements = document.querySelectorAll('.user-name');
+    userElements.forEach(el => {
+        el.textContent = currentUser.name;
+    });
     
-    if (result.success && result.data.crm) {
-        const crmContainer = document.getElementById('crmData');
-        if (crmContainer) {
-            crmContainer.innerHTML = '';
-            
-            if (result.data.crm.length === 0) {
-                crmContainer.innerHTML = '<p>Студентов пока нет</p>';
-                return;
-            }
-            
-            const table = document.createElement('table');
-            table.innerHTML = `
-                <thead>
-                    <tr>
-                        <th>Студент</th>
-                        <th>Email</th>
-                        <th>Оценки за задания</th>
-                        <th>Результаты тестов</th>
-                        <th>Средний балл</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${result.data.crm.map(student => {
-                        const avgGrade = student.grades.length > 0 
-                            ? Math.round(student.grades.reduce((a, b) => a + b, 0) / student.grades.length)
-                            : '-';
-                        const avgTest = student.test_scores.length > 0
-                            ? Math.round(student.test_scores.reduce((a, b) => a + b, 0) / student.test_scores.length)
-                            : '-';
-                        
-                        return `
-                            <tr>
-                                <td>${student.username}</td>
-                                <td>${student.email}</td>
-                                <td>${student.grades.join(', ') || '-'}</td>
-                                <td>${student.test_scores.join(', ') || '-'}</td>
-                                <td>${avgGrade} / ${avgTest}</td>
-                            </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            `;
-            
-            crmContainer.appendChild(table);
+    const roleElements = document.querySelectorAll('.user-role');
+    roleElements.forEach(el => {
+        const roleNames = {
+            'admin': 'Администратор',
+            'teacher': 'Преподаватель',
+            'student': 'Студент'
+        };
+        el.textContent = roleNames[currentUser.role] || currentUser.role;
+    });
+    
+    // Показываем элементы для авторизованных пользователей
+    document.querySelectorAll('.auth-only').forEach(el => {
+        el.style.display = 'block';
+    });
+    
+    document.querySelectorAll('.guest-only').forEach(el => {
+        el.style.display = 'none';
+    });
+}
+
+// Функция входа
+async function login(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const login = formData.get('login');
+    const password = formData.get('password');
+    
+    try {
+        const response = await fetch('/php/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=login&login=${encodeURIComponent(login)}&password=${encodeURIComponent(password)}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            currentUser = data.user;
+            showAlert('Вход выполнен успешно!', 'success');
+            setTimeout(() => {
+                window.location.href = data.redirect;
+            }, 1000);
+        } else {
+            showAlert(data.error, 'error');
         }
+    } catch (error) {
+        showAlert('Ошибка соединения с сервером', 'error');
     }
 }
 
-// Initialize page-specific functions
-if (window.location.pathname.includes('index.html')) {
-    loadCourses();
-}
-
-if (window.location.pathname.includes('course.html')) {
-    const urlParams = new URLSearchParams(window.location.search);
-    const courseId = urlParams.get('id');
-    if (courseId) {
-        loadCourseDetails(courseId);
-        loadCRMData(courseId);
+// Функция регистрации
+async function register(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const login = formData.get('login');
+    const password = formData.get('password');
+    const name = formData.get('name');
+    const email = formData.get('email');
+    const role = formData.get('role') || 'student';
+    
+    try {
+        const response = await fetch('/php/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=register&login=${encodeURIComponent(login)}&password=${encodeURIComponent(password)}&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&role=${role}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            currentUser = data.user;
+            showAlert('Регистрация успешна! Добро пожаловать!', 'success');
+            setTimeout(() => {
+                window.location.href = data.redirect;
+            }, 1000);
+        } else {
+            showAlert(data.error, 'error');
+        }
+    } catch (error) {
+        showAlert('Ошибка соединения с сервером', 'error');
     }
 }
+
+// Функция выхода
+async function logout() {
+    try {
+        await fetch('/php/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'action=logout'
+        });
+        
+        currentUser = null;
+        showAlert('Вы вышли из системы', 'success');
+        setTimeout(() => {
+            window.location.href = '/html/index.html';
+        }, 1000);
+    } catch (error) {
+        showAlert('Ошибка при выходе', 'error');
+    }
+}
+
+// Создание курса
+async function createCourse(title, description) {
+    try {
+        const response = await fetch('/php/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=create_course&title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Курс создан успешно!', 'success');
+            return data.course;
+        } else {
+            showAlert(data.error, 'error');
+            return null;
+        }
+    } catch (error) {
+        showAlert('Ошибка соединения с сервером', 'error');
+        return null;
+    }
+}
+
+// Получение курсов
+async function getCourses() {
+    try {
+        const response = await fetch('/php/api.php?action=get_courses');
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.courses;
+        } else {
+            showAlert(data.error, 'error');
+            return [];
+        }
+    } catch (error) {
+        showAlert('Ошибка соединения с сервером', 'error');
+        return [];
+    }
+}
+
+// Создание урока
+async function createLesson(courseId, title, type, content) {
+    try {
+        const response = await fetch('/php/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=create_lesson&courseId=${courseId}&title=${encodeURIComponent(title)}&type=${type}&content=${encodeURIComponent(content)}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Урок создан успешно!', 'success');
+            return data.lesson;
+        } else {
+            showAlert(data.error, 'error');
+            return null;
+        }
+    } catch (error) {
+        showAlert('Ошибка соединения с сервером', 'error');
+        return null;
+    }
+}
+
+// Получение уроков курса
+async function getLessons(courseId) {
+    try {
+        const response = await fetch(`/php/api.php?action=get_lessons&courseId=${courseId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.lessons;
+        } else {
+            return [];
+        }
+    } catch (error) {
+        return [];
+    }
+}
+
+// Зачисление студента
+async function enrollStudent(studentId, courseId) {
+    try {
+        const response = await fetch('/php/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=enroll_student&studentId=${studentId}&courseId=${courseId}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Студент зачислен!', 'success');
+            return true;
+        } else {
+            showAlert(data.error, 'error');
+            return false;
+        }
+    } catch (error) {
+        showAlert('Ошибка соединения с сервером', 'error');
+        return false;
+    }
+}
+
+// Отправка практического задания
+async function submitAssignment(lessonId, fileContent, fileName) {
+    try {
+        const response = await fetch('/php/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=submit_assignment&lessonId=${lessonId}&fileContent=${encodeURIComponent(fileContent)}&fileName=${encodeURIComponent(fileName)}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Задание отправлено!', 'success');
+            return data.submission;
+        } else {
+            showAlert(data.error, 'error');
+            return null;
+        }
+    } catch (error) {
+        showAlert('Ошибка соединения с сервером', 'error');
+        return null;
+    }
+}
+
+// Получение работ студентов
+async function getSubmissions(lessonId) {
+    try {
+        const response = await fetch(`/php/api.php?action=get_submissions&lessonId=${lessonId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.submissions;
+        } else {
+            return [];
+        }
+    } catch (error) {
+        return [];
+    }
+}
+
+// Оценка работы
+async function gradeSubmission(submissionId, grade, feedback) {
+    try {
+        const response = await fetch('/php/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=grade_submission&submissionId=${submissionId}&grade=${grade}&feedback=${encodeURIComponent(feedback)}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Оценка выставлена!', 'success');
+            return true;
+        } else {
+            showAlert(data.error, 'error');
+            return false;
+        }
+    } catch (error) {
+        showAlert('Ошибка соединения с сервером', 'error');
+        return false;
+    }
+}
+
+// Создание теста
+async function createTest(lessonId, questions) {
+    try {
+        const response = await fetch('/php/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=create_test&lessonId=${lessonId}&questions=${encodeURIComponent(JSON.stringify(questions))}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Тест создан!', 'success');
+            return data.test;
+        } else {
+            showAlert(data.error, 'error');
+            return null;
+        }
+    } catch (error) {
+        showAlert('Ошибка соединения с сервером', 'error');
+        return null;
+    }
+}
+
+// Получение теста
+async function getTest(lessonId) {
+    try {
+        const response = await fetch(`/php/api.php?action=get_test&lessonId=${lessonId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.test;
+        } else {
+            return null;
+        }
+    } catch (error) {
+        return null;
+    }
+}
+
+// Отправка ответов на тест
+async function submitTest(testId, answers) {
+    try {
+        const response = await fetch('/php/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=submit_test&testId=${testId}&answers=${encodeURIComponent(JSON.stringify(answers))}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.result;
+        } else {
+            showAlert(data.error, 'error');
+            return null;
+        }
+    } catch (error) {
+        showAlert('Ошибка соединения с сервером', 'error');
+        return null;
+    }
+}
+
+// Получение всех пользователей
+async function getAllUsers(role = '') {
+    try {
+        const url = role 
+            ? `/php/api.php?action=get_all_users&role=${role}`
+            : '/php/api.php?action=get_all_users';
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success) {
+            return data.users;
+        } else {
+            return [];
+        }
+    } catch (error) {
+        return [];
+    }
+}
+
+// Создание преподавателя (только админ)
+async function createTeacher(login, password, name, email) {
+    try {
+        const response = await fetch('/php/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `action=create_teacher&login=${encodeURIComponent(login)}&password=${encodeURIComponent(password)}&name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert('Преподаватель создан!', 'success');
+            return data.user;
+        } else {
+            showAlert(data.error, 'error');
+            return null;
+        }
+    } catch (error) {
+        showAlert('Ошибка соединения с сервером', 'error');
+        return null;
+    }
+}
+
+// Утилита для показа уведомлений
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type}`;
+    alertDiv.textContent = message;
+    
+    const container = document.querySelector('.container') || document.body;
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 3000);
+}
+
+// Модальные окна
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// Закрытие модального окна по клику вне его
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal')) {
+        e.target.classList.remove('active');
+    }
+});
+
+// Обработка форм
+document.querySelectorAll('form[data-handler]').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+        const handlerName = form.dataset.handler;
+        if (typeof window[handlerName] === 'function') {
+            await window[handlerName](e);
+        }
+    });
+});
