@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Все курсы - Онлайн Обучение</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="index.html" class="logo">OnlineLearn</a>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Главная</a></li>
+                    <li><a href="courses.html">Курсы</a></li>
+                    <li><a href="login.html">Вход</a></li>
+                    <li><a href="register.html">Регистрация</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="card">
+                <h2>Все доступные курсы</h2>
+                <div id="allCoursesList">
+                    <p>Загрузка курсов...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 OnlineLearn. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script src="../js/app.js"></script>
+    <script>
+        async function loadAllCourses() {
+            const result = await API.request('get_courses');
+            
+            if (result.success && result.data.courses) {
+                const coursesContainer = document.getElementById('allCoursesList');
+                if (coursesContainer) {
+                    coursesContainer.innerHTML = '';
+                    
+                    if (result.data.courses.length === 0) {
+                        coursesContainer.innerHTML = '<p>Курсы пока не созданы</p>';
+                        return;
+                    }
+                    
+                    result.data.courses.forEach(course => {
+                        const courseCard = document.createElement('div');
+                        courseCard.className = 'card course-item';
+                        courseCard.innerHTML = `
+                            <h3>${course.title}</h3>
+                            <p>${course.description}</p>
+                            <a href="course.html?id=${course.id}" class="btn">Подробнее</a>
+                        `;
+                        coursesContainer.appendChild(courseCard);
+                    });
+                }
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadAllCourses);
+    </script>
+</body>
+</html>

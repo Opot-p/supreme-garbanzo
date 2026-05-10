@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Онлайн Обучение - Главная</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="index.html" class="logo">OnlineLearn</a>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Главная</a></li>
+                    <li><a href="courses.html">Курсы</a></li>
+                    <li><a href="login.html">Вход</a></li>
+                    <li><a href="register.html">Регистрация</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="card">
+                <h2>Добро пожаловать на платформу онлайн обучения!</h2>
+                <p>Наша платформа предоставляет возможности для:</p>
+                <ul style="margin: 20px 0; padding-left: 30px;">
+                    <li>Создания и прохождения курсов</li>
+                    <li>Просмотра видеоуроков</li>
+                    <li>Выполнения практических заданий</li>
+                    <li>Прохождения тестов</li>
+                    <li>Отслеживания прогресса через CRM модуль</li>
+                </ul>
+                
+                <div class="grid grid-3" style="margin-top: 30px;">
+                    <div class="card">
+                        <h3>Для студентов</h3>
+                        <p>Получайте новые знания, выполняйте задания и отслеживайте свой прогресс</p>
+                        <a href="register.html" class="btn" style="margin-top: 15px;">Начать обучение</a>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>Для преподавателей</h3>
+                        <p>Создавайте курсы, добавляйте уроки и управляйте студентами</p>
+                        <a href="login.html" class="btn" style="margin-top: 15px;">Войти как преподаватель</a>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>CRM Модуль</h3>
+                        <p>Отслеживайте успеваемость студентов, оценки и результаты тестов</p>
+                        <a href="login.html" class="btn" style="margin-top: 15px;">Узнать больше</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Популярные курсы</h2>
+                <div id="coursesList">
+                    <p>Загрузка курсов...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 OnlineLearn. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script src="../js/app.js"></script>
+</body>
+</html>

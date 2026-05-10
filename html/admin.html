@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ Панель - Онлайн Обучение</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="index.html" class="logo">OnlineLearn</a>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Главная</a></li>
+                    <li><a href="admin.html">Админка</a></li>
+                    <li><a href="profile.html">Профиль</a></li>
+                    <li><a href="#" id="logoutBtn">Выход</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="card">
+                <h2>Панель администратора</h2>
+                <p id="userDisplay"></p>
+            </div>
+
+            <div class="card">
+                <h2>Создать аккаунт преподавателя</h2>
+                
+                <form id="createTeacherForm">
+                    <div class="form-group">
+                        <label for="user_id">ID пользователя</label>
+                        <input type="number" id="user_id" name="user_id" required placeholder="Введите ID существующего пользователя">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="full_name">ФИО преподавателя</label>
+                        <input type="text" id="full_name" name="full_name" required placeholder="Иванов Иван Иванович">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="specialization">Специализация</label>
+                        <input type="text" id="specialization" name="specialization" placeholder="Например: Программирование, Дизайн, Математика">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success">Создать преподавателя</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Управление пользователями</h2>
+                <p>Здесь будет список всех пользователей системы для управления доступом.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Логин</th>
+                            <th>Email</th>
+                            <th>Роль</th>
+                            <th>Дата регистрации</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>admin</td>
+                            <td>admin@example.com</td>
+                            <td>admin</td>
+                            <td>2024-01-01</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 OnlineLearn. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script src="../js/app.js"></script>
+</body>
+</html>

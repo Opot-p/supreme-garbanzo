@@ -1,0 +1,23 @@
+```
+# Dependencies
+vendor/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+.env.*
+
+# Compiled PHP
+*.php~
+
+# Temporary files
+*.tmp
+*.swp
+
+# Coverage reports
+coverage/
+*.cover
+```

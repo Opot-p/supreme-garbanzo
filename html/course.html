@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Курс - Онлайн Обучение</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="index.html" class="logo">OnlineLearn</a>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Главная</a></li>
+                    <li><a href="courses.html">Курсы</a></li>
+                    <li><a href="teacher.html">Кабинет</a></li>
+                    <li><a href="profile.html">Профиль</a></li>
+                    <li><a href="#" id="logoutBtn">Выход</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="card">
+                <h1 id="courseTitle">Загрузка...</h1>
+                <p id="courseDescription"></p>
+            </div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <h2>Уроки курса</h2>
+                    <div id="lessonsList">
+                        <p>Загрузка уроков...</p>
+                    </div>
+                    
+                    <button class="btn btn-success" onclick="document.getElementById('createLessonForm').style.display='block'" style="margin-top: 20px;">
+                        + Добавить урок
+                    </button>
+                </div>
+
+                <div class="card">
+                    <h2>CRM Модуль</h2>
+                    <p>Отслеживание успеваемости студентов</p>
+                    
+                    <div id="crmData">
+                        <p>Загрузка данных CRM...</p>
+                    </div>
+                    
+                    <button class="btn" onclick="document.getElementById('enrollStudentForm').style.display='block'" style="margin-top: 20px;">
+                        + Зачислить студента
+                    </button>
+                </div>
+            </div>
+
+            <div class="card" id="createLessonForm" style="display: none;">
+                <h2>Добавить новый урок</h2>
+                <form id="createLessonFormInner">
+                    <input type="hidden" name="course_id" id="courseId" value="">
+                    
+                    <div class="form-group">
+                        <label for="title">Название урока</label>
+                        <input type="text" id="title" name="title" required placeholder="Например: Урок 1: Введение">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="content">Содержание</label>
+                        <textarea id="content" name="content" rows="4" placeholder="Текст урока или описание"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="type">Тип урока</label>
+                        <select id="type" name="type">
+                            <option value="text">Текстовый урок</option>
+                            <option value="video">Видеоурок</option>
+                            <option value="practice">Практическое занятие</option>
+                            <option value="test">Тест</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="attachment">Прикрепленный файл (URL)</label>
+                        <input type="text" id="attachment" name="attachment" placeholder="Ссылка на видео или файл">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success">Добавить урок</button>
+                    <button type="button" class="btn" onclick="document.getElementById('createLessonForm').style.display='none'">Отмена</button>
+                </form>
+            </div>
+
+            <div class="card" id="enrollStudentForm" style="display: none;">
+                <h2>Зачислить студента на курс</h2>
+                <form id="enrollStudentFormInner">
+                    <input type="hidden" name="course_id" id="enrollCourseId" value="">
+                    
+                    <div class="form-group">
+                        <label for="student_id">ID студента</label>
+                        <input type="number" id="student_id" name="student_id" required placeholder="Введите ID студента">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success">Зачислить</button>
+                    <button type="button" class="btn" onclick="document.getElementById('enrollStudentForm').style.display='none'">Отмена</button>
+                </form>
+            </div>
+
+            <div class="card" id="createAssignmentForm" style="display: none;">
+                <h2>Создать задание</h2>
+                <form id="createAssignmentFormInner">
+                    <input type="hidden" name="lesson_id" id="assignmentLessonId" value="">
+                    
+                    <div class="form-group">
+                        <label for="assign_type">Тип задания</label>
+                        <select id="assign_type" name="type">
+                            <option value="practice">Практическое задание</option>
+                            <option value="test">Тест</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="assign_title">Название</label>
+                        <input type="text" id="assign_title" name="title" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="assign_description">Описание</label>
+                        <textarea id="assign_description" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="due_date">Срок сдачи</label>
+                        <input type="datetime-local" id="due_date" name="due_date">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success">Создать задание</button>
+                    <button type="button" class="btn" onclick="document.getElementById('createAssignmentForm').style.display='none'">Отмена</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 OnlineLearn. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script src="../js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const courseId = urlParams.get('id');
+            
+            if (courseId) {
+                document.getElementById('courseId').value = courseId;
+                document.getElementById('enrollCourseId').value = courseId;
+                
+                loadCourseDetails(courseId);
+                loadCRMData(courseId);
+            }
+            
+            // Create Lesson Form
+            const createLessonForm = document.getElementById('createLessonFormInner');
+            if (createLessonForm) {
+                createLessonForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const result = await API.request('create_lesson', {
+                        course_id: formData.get('course_id'),
+                        title: formData.get('title'),
+                        content: formData.get('content'),
+                        type: formData.get('type'),
+                        attachment: formData.get('attachment')
+                    });
+                    if (result.success) {
+                        UI.showAlert(result.message, 'success');
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        UI.showAlert(result.message, 'error');
+                    }
+                });
+            }
+            
+            // Enroll Student Form
+            const enrollStudentForm = document.getElementById('enrollStudentFormInner');
+            if (enrollStudentForm) {
+                enrollStudentForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const formData = new FormData(this);
+                    const result = await API.request('enroll_student', {
+                        course_id: formData.get('course_id'),
+                        student_id: formData.get('student_id')
+                    });
+                    if (result.success) {
+                        UI.showAlert(result.message, 'success');
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        UI.showAlert(result.message, 'error');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

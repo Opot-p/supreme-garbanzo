@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль преподавателя - Онлайн Обучение</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <a href="index.html" class="logo">OnlineLearn</a>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Главная</a></li>
+                    <li><a href="courses.html">Курсы</a></li>
+                    <li><a href="teacher.html">Кабинет</a></li>
+                    <li><a href="profile.html">Профиль</a></li>
+                    <li><a href="#" id="logoutBtn">Выход</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="profile-header">
+                <div class="profile-avatar">П</div>
+                <div class="profile-info">
+                    <h1 id="teacherName">Иван Петров</h1>
+                    <p id="teacherSpecialization">Специализация: Программирование</p>
+                    <p id="userDisplay"></p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Мои курсы</h2>
+                <div id="teacherCourses">
+                    <div class="course-item">
+                        <h3>Введение в PHP</h3>
+                        <p>Курс по основам PHP программирования</p>
+                        <a href="course.html?id=1" class="btn">Управление курсом</a>
+                    </div>
+                </div>
+                
+                <button class="btn btn-success" onclick="document.getElementById('createCourseForm').style.display='block'" style="margin-top: 20px;">
+                    + Создать новый курс
+                </button>
+            </div>
+
+            <div class="card" id="createCourseForm" style="display: none;">
+                <h2>Создать новый курс</h2>
+                <form id="createCourseFormInner">
+                    <div class="form-group">
+                        <label for="title">Название курса</label>
+                        <input type="text" id="title" name="title" required placeholder="Например: Введение в Python">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">Описание курса</label>
+                        <textarea id="description" name="description" rows="4" placeholder="Опишите содержание курса"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success">Создать курс</button>
+                    <button type="button" class="btn" onclick="document.getElementById('createCourseForm').style.display='none'">Отмена</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Статистика</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">1</div>
+                        <div class="stat-label">Курсов создано</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">5</div>
+                        <div class="stat-label">Уроков</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">10</div>
+                        <div class="stat-label">Студентов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">85%</div>
+                        <div class="stat-label">Средняя успеваемость</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 OnlineLearn. Все права защищены.</p>
+        </div>
+    </footer>
+
+    <script src="../js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const createCourseForm = document.getElementById('createCourseFormInner');
+            if (createCourseForm) {
+                createCourseForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(this);
+                    const result = await API.request('create_course', {
+                        title: formData.get('title'),
+                        description: formData.get('description')
+                    });
+                    
+                    if (result.success) {
+                        UI.showAlert(result.message, 'success');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        UI.showAlert(result.message, 'error');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
